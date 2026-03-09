@@ -1,1 +1,742 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Game Đổ Nước</title>
+  <style>
+    * { box-sizing: border-box; }
 
+    body{
+      margin:0;
+      min-height:100vh;
+      font-family:Arial,sans-serif;
+      color:#fff;
+      text-align:center;
+      background:
+        radial-gradient(circle at top, #8e5a31 0%, #5a341f 38%, #2a190f 100%);
+      padding:18px 10px 30px;
+    }
+
+    h1{
+      margin:8px 0 10px;
+      font-size:48px;
+      text-shadow:0 3px 10px rgba(0,0,0,.2);
+    }
+
+    .hud{
+      display:flex;
+      justify-content:center;
+      gap:10px;
+      flex-wrap:wrap;
+      margin-bottom:12px;
+    }
+
+    .badge{
+      background:rgba(255,255,255,.1);
+      border:1px solid rgba(255,255,255,.16);
+      border-radius:999px;
+      padding:10px 14px;
+      font-weight:700;
+      backdrop-filter:blur(4px);
+    }
+
+    #message{
+      min-height:24px;
+      color:#ffe082;
+      font-weight:700;
+      margin-bottom:12px;
+    }
+
+    #gameWrap{
+      position:relative;
+      max-width:1100px;
+      margin:0 auto;
+      min-height:500px;
+    }
+
+    #game{
+      display:flex;
+      flex-wrap:wrap;
+      justify-content:center;
+      align-items:flex-end;
+      gap:24px 16px;
+      padding:20px 10px 30px;
+    }
+
+    .tube-wrap{
+      width:110px;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      gap:8px;
+    }
+
+    .tube-label{
+      font-size:12px;
+      opacity:.9;
+    }
+
+    .tube{
+      width:108px;
+      height:300px;
+      position:relative;
+      cursor:pointer;
+      transition:transform .2s ease, filter .2s ease;
+      transform-origin:50% 84%;
+    }
+
+    .tube:hover{
+      transform:translateY(-4px);
+    }
+
+    .tube.selected{
+      filter:drop-shadow(0 0 12px rgba(255,235,59,.55));
+      transform:translateY(-8px);
+    }
+
+    .tube.done{
+      filter:drop-shadow(0 0 12px rgba(87,209,107,.5));
+    }
+
+    .mouth-outer{
+position:absolute;
+top:80px;
+left:50%;
+transform:translateX(-50%);
+width:55px;
+height:16px;
+border:4px solid rgba(255,255,255,.96);
+border-bottom:none;
+border-radius:14px 14px 0 0;
+background:rgba(255,255,255,.08);
+z-index:7;
+}
+
+  .mouth-inner{
+position:absolute;
+top: 90px;px;
+left:50%;
+transform:translateX(-50%);
+width:50px;
+height:8px;
+border:4px solid rgba(255,255,255,.96);
+border-radius:10px;
+background:#c8f1ff;
+z-index:8;
+}
+
+.glass{
+position:absolute;
+inset:auto 8px 0 8px;
+height:208px;
+border:4px solid rgba(255,255,255,.96);
+border-top:none;
+border-radius:30px 30px 30px 30px;
+background:
+linear-gradient(to right,
+rgba(255,255,255,.14) 0%,
+rgba(255,255,255,.06) 20%,
+rgba(255,255,255,.03) 52%,
+rgba(255,255,255,.10) 100%);
+overflow:hidden;
+box-shadow:
+inset 0 0 0 2px rgba(255,255,255,.04),
+0 10px 18px rgba(0,0,0,.32);
+}
+
+    .glass::after{
+      content:"";
+      position:absolute;
+      left:10px;
+      top:30px;
+      width:8px;
+      height:170px;
+      background:linear-gradient(to bottom, rgba(255,255,255,.35), rgba(255,255,255,.02));
+      border-radius:999px;
+      z-index:4;
+    }
+
+    .liquid{
+      position:absolute;
+      left:0;
+      right:0;
+      bottom:0;
+      height:100%;
+      display:flex;
+      flex-direction:column-reverse;
+      z-index:1;
+    }
+
+    .layer{
+      width:100%;
+      height:25%;
+      position:relative;
+      border-top:1px solid rgba(255,255,255,.1);
+    }
+
+    .layer::before{
+      content:"";
+      position:absolute;
+      top:0;
+      left:8%;
+      width:84%;
+      height:10px;
+      background:rgba(255,255,255,.18);
+      border-radius:50%;
+    }
+
+    .controls{
+      margin-top:8px;
+      display:flex;
+      justify-content:center;
+      flex-wrap:wrap;
+      gap:10px;
+    }
+
+    button{
+      border:none;
+      border-radius:10px;
+      padding:11px 16px;
+      font-size:15px;
+      font-weight:700;
+      cursor:pointer;
+      color:#fff;
+      background:#2f80ed;
+    }
+
+    button.secondary{ background:#6b7280; }
+    button.warn{ background:#f59e0b; }
+    button.success{ background:#16a34a; }
+
+    .flying-tube{
+      position:absolute;
+      width:108px;
+      height:300px;
+      pointer-events:none;
+      z-index:30;
+      transform-origin:50% 84%;
+    }
+
+    .pour-stream{
+      position:absolute;
+      width:12px;
+      border-radius:999px;
+      pointer-events:none;
+      z-index:25;
+      opacity:0;
+      box-shadow:0 0 10px rgba(255,255,255,.25);
+    }
+
+    @media (max-width: 700px){
+      h1{ font-size:34px; }
+      .tube-wrap{ width:72px; }
+      .tube, .flying-tube{ width:72px; height:220px; }
+      .glass{ height:184px; inset:auto 6px 0 6px; }
+      #game{ gap:18px 10px; }
+    }
+  </style>
+</head>
+<body>
+  <h1>Game Chọn Màu Đúng </h1>
+
+  <div class="hud">
+    <div class="badge">Level: <span id="levelText">1</span></div>
+    <div class="badge">Bước: <span id="movesText">0</span></div>
+    <div class="badge">Hoàn thành: <span id="doneText">0</span></div>
+  </div>
+
+  <div id="message"></div>
+
+  <div id="gameWrap">
+    <div id="game"></div>
+  </div>
+
+  <div class="controls">
+    <button id="restartBtn" class="secondary">Chơi lại</button>
+    <button id="undoBtn" class="warn">Undo</button>
+    <button id="nextBtn" class="success">Màn mới</button>
+    <button id="resetLv1Btn" class="secondary">Về LV1</button>
+  </div>
+
+  <script>
+    const CAPACITY = 4;
+    const COLORS = [
+      "#ff3b30", "#007aff", "#ffd60a", "#34c759",
+      "#af52de", "#ff9500", "#5ac8fa", "#ff2d55",
+      "#8bc34a", "#14b8a6"
+    ];
+
+    let level = 1;
+    let tubes = [];
+    let initialTubes = [];
+    let history = [];
+    let selectedTube = null;
+    let moves = 0;
+    let animating = false;
+    let audioCtx = null;
+
+    const gameEl = document.getElementById("game");
+    const gameWrapEl = document.getElementById("gameWrap");
+    const levelText = document.getElementById("levelText");
+    const movesText = document.getElementById("movesText");
+    const doneText = document.getElementById("doneText");
+    const messageEl = document.getElementById("message");
+    const restartBtn = document.getElementById("restartBtn");
+    const undoBtn = document.getElementById("undoBtn");
+    const nextBtn = document.getElementById("nextBtn");
+    const resetLv1Btn = document.getElementById("resetLv1Btn");
+
+    function clone(x){
+      return JSON.parse(JSON.stringify(x));
+    }
+
+    function shuffle(arr){
+      const a = [...arr];
+      for(let i = a.length - 1; i > 0; i--){
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    }
+
+    function getConfigByLevel(lv){
+      const colorCount = Math.min(3 + Math.floor((lv - 1) / 2), 7);
+      const emptyCount = lv >= 5 ? 3 : 2;
+      return { colorCount, emptyCount };
+    }
+
+    function generateLevelData(lv){
+      const { colorCount, emptyCount } = getConfigByLevel(lv);
+
+      while(true){
+        let pool = [];
+        for(let i = 0; i < colorCount; i++){
+          for(let j = 0; j < CAPACITY; j++){
+            pool.push(COLORS[i]);
+          }
+        }
+
+        pool = shuffle(pool);
+
+        const result = [];
+        for(let i = 0; i < colorCount; i++){
+          result.push(pool.slice(i * CAPACITY, (i + 1) * CAPACITY));
+        }
+
+        for(let i = 0; i < emptyCount; i++){
+          result.push([]);
+        }
+
+        if(!isSolvedState(result) && hasAnyMove(result)) return result;
+      }
+    }
+
+    function isSolvedState(state){
+      return state.every(tube => {
+        if(tube.length === 0) return true;
+        return tube.length === CAPACITY && tube.every(c => c === tube[0]);
+      });
+    }
+
+    function topColor(tube){
+      return tube.length ? tube[tube.length - 1] : null;
+    }
+
+    function topCount(tube){
+      if(!tube.length) return 0;
+      const color = topColor(tube);
+      let count = 0;
+      for(let i = tube.length - 1; i >= 0; i--){
+        if(tube[i] === color) count++;
+        else break;
+      }
+      return count;
+    }
+
+    function isDoneTube(tube){
+      return tube.length === CAPACITY && tube.every(c => c === tube[0]);
+    }
+
+    function doneCount(){
+      return tubes.filter(isDoneTube).length;
+    }
+
+    function canPour(from, to, state = tubes){
+      if(from === to) return false;
+
+      const source = state[from];
+      const target = state[to];
+
+      if(!source.length) return false;
+      if(target.length >= CAPACITY) return false;
+
+      const sTop = topColor(source);
+      const tTop = topColor(target);
+
+      if(!target.length) return true;
+      return sTop === tTop;
+    }
+
+    function getMoveAmount(from, to, state = tubes){
+      if(!canPour(from, to, state)) return 0;
+      const source = state[from];
+      const target = state[to];
+      return Math.min(topCount(source), CAPACITY - target.length);
+    }
+
+    function hasAnyMove(state){
+      for(let i = 0; i < state.length; i++){
+        for(let j = 0; j < state.length; j++){
+          if(i !== j && canPour(i, j, state)) return true;
+        }
+      }
+      return false;
+    }
+
+    function checkWin(){
+      return isSolvedState(tubes);
+    }
+
+    function playPourSound(){
+      try{
+        if(!audioCtx){
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if(audioCtx.state === "suspended"){
+          audioCtx.resume();
+        }
+
+        const now = audioCtx.currentTime;
+        const osc1 = audioCtx.createOscillator();
+        const osc2 = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+
+        osc1.type = "triangle";
+        osc2.type = "sine";
+
+        osc1.frequency.setValueAtTime(700, now);
+        osc1.frequency.exponentialRampToValueAtTime(260, now + 0.28);
+
+        osc2.frequency.setValueAtTime(900, now);
+        osc2.frequency.exponentialRampToValueAtTime(320, now + 0.22);
+
+        gain.gain.setValueAtTime(0.0001, now);
+        gain.gain.exponentialRampToValueAtTime(0.08, now + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.32);
+
+        osc1.connect(gain);
+        osc2.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        osc1.start(now);
+        osc2.start(now);
+        osc1.stop(now + 0.32);
+        osc2.stop(now + 0.32);
+      } catch(e){}
+    }
+
+    function buildTube(index, tube, floating = false){
+      const tubeEl = document.createElement("div");
+      tubeEl.className = floating ? "flying-tube" : "tube";
+      if(!floating) tubeEl.dataset.index = index;
+
+      if(!floating && selectedTube === index) tubeEl.classList.add("selected");
+      if(!floating && isDoneTube(tube)) tubeEl.classList.add("done");
+
+      const mouthOuter = document.createElement("div");
+      mouthOuter.className = "mouth-outer";
+
+      const mouthInner = document.createElement("div");
+      mouthInner.className = "mouth-inner";
+
+      const glass = document.createElement("div");
+      glass.className = "glass";
+
+      const liquid = document.createElement("div");
+      liquid.className = "liquid";
+
+      tube.forEach(color => {
+        const layer = document.createElement("div");
+        layer.className = "layer";
+        layer.style.background = color;
+        liquid.appendChild(layer);
+      });
+
+      glass.appendChild(liquid);
+      tubeEl.appendChild(mouthOuter);
+      tubeEl.appendChild(mouthInner);
+      tubeEl.appendChild(glass);
+
+      return tubeEl;
+    }
+
+    function render(){
+      levelText.textContent = level;
+      movesText.textContent = moves;
+      doneText.textContent = doneCount();
+      undoBtn.disabled = history.length === 0 || animating;
+
+      gameEl.innerHTML = "";
+
+      tubes.forEach((tube, index) => {
+        const wrap = document.createElement("div");
+        wrap.className = "tube-wrap";
+
+        const tubeEl = buildTube(index, tube, false);
+        tubeEl.addEventListener("click", () => onTubeClick(index));
+
+        const label = document.createElement("div");
+        label.className = "tube-label";
+        label.textContent = "Bình " + (index + 1);
+
+        wrap.appendChild(tubeEl);
+        wrap.appendChild(label);
+        gameEl.appendChild(wrap);
+      });
+
+      messageEl.textContent = checkWin()
+        ? "Bạn đã thắng! Bấm Màn mới để chơi tiếp."
+        : "";
+    }
+
+    function saveHistory(){
+      history.push({
+        tubes: clone(tubes),
+        moves
+      });
+    }
+
+    function performPour(from, to){
+      const amount = getMoveAmount(from, to);
+      if(amount <= 0) return false;
+
+      for(let i = 0; i < amount; i++){
+        tubes[to].push(tubes[from].pop());
+      }
+
+      moves++;
+      return true;
+    }
+
+    function wait(ms){
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    function getTubeElement(index){
+      return document.querySelector(`.tube[data-index="${index}"]`);
+    }
+
+    function createFlyingTube(rect, tubeData){
+      const wrapRect = gameWrapEl.getBoundingClientRect();
+      const flying = buildTube(null, tubeData, true);
+      flying.style.left = (rect.left - wrapRect.left) + "px";
+      flying.style.top = (rect.top - wrapRect.top) + "px";
+      gameWrapEl.appendChild(flying);
+      return flying;
+    }
+
+    function createStream(x, y, height, color){
+      const wrapRect = gameWrapEl.getBoundingClientRect();
+      const stream = document.createElement("div");
+      stream.className = "pour-stream";
+      stream.style.left = (x - wrapRect.left) + "px";
+      stream.style.top = (y - wrapRect.top) + "px";
+      stream.style.height = height + "px";
+      stream.style.background = color;
+      gameWrapEl.appendChild(stream);
+      return stream;
+    }
+
+    async function animatePour(from, to){
+      animating = true;
+
+      const sourceEl = getTubeElement(from);
+      const targetEl = getTubeElement(to);
+
+      const sourceRect = sourceEl.getBoundingClientRect();
+      const targetRect = targetEl.getBoundingClientRect();
+
+      const sourceData = clone(tubes[from]);
+      const movingColor = topColor(tubes[from]);
+
+      const flying = createFlyingTube(sourceRect, sourceData);
+      sourceEl.style.visibility = "hidden";
+
+      const liftY = -58;
+      const targetCenterX = targetRect.left + targetRect.width / 2;
+      const sourceCenterX = sourceRect.left + sourceRect.width / 2;
+      const dx = targetCenterX - sourceCenterX;
+      const tilt = targetRect.left > sourceRect.left ? 62 : -62;
+
+      flying.animate(
+        [
+          { transform: "translate(0px, 0px) rotate(0deg)" },
+          { transform: `translate(0px, ${liftY}px) rotate(0deg)` }
+        ],
+        { duration: 180, easing: "ease-out", fill: "forwards" }
+      );
+      await wait(180);
+
+      flying.animate(
+        [
+          { transform: `translate(0px, ${liftY}px) rotate(0deg)` },
+          { transform: `translate(${dx}px, ${liftY}px) rotate(0deg)` }
+        ],
+        { duration: 240, easing: "ease-in-out", fill: "forwards" }
+      );
+      await wait(240);
+
+      flying.animate(
+        [
+          { transform: `translate(${dx}px, ${liftY}px) rotate(0deg)` },
+          { transform: `translate(${dx}px, ${liftY}px) rotate(${tilt}deg)` }
+        ],
+        { duration: 180, easing: "ease-out", fill: "forwards" }
+      );
+      await wait(180);
+
+      const streamX = targetRect.left + targetRect.width / 2;
+      const streamY = sourceRect.top - 12;
+      const streamHeight = Math.max(70, targetRect.top - sourceRect.top + 110);
+      const stream = createStream(streamX - 6, streamY, streamHeight, movingColor);
+
+      stream.animate(
+        [
+          { opacity: 0, transform: "scaleY(.2)" },
+          { opacity: 1, transform: "scaleY(1)" }
+        ],
+        { duration: 120, easing: "ease-out", fill: "forwards" }
+      );
+
+      await wait(120);
+      playPourSound();
+      performPour(from, to);
+      render();
+
+      await wait(140);
+
+      stream.animate(
+        [
+          { opacity: 1, transform: "scaleY(1)" },
+          { opacity: 0, transform: "scaleY(.2)" }
+        ],
+        { duration: 120, easing: "ease-in", fill: "forwards" }
+      );
+      await wait(120);
+      stream.remove();
+
+      flying.animate(
+        [
+          { transform: `translate(${dx}px, ${liftY}px) rotate(${tilt}deg)` },
+          { transform: `translate(${dx}px, ${liftY}px) rotate(0deg)` }
+        ],
+        { duration: 160, easing: "ease-out", fill: "forwards" }
+      );
+      await wait(160);
+
+      flying.animate(
+        [
+          { transform: `translate(${dx}px, ${liftY}px) rotate(0deg)` },
+          { transform: "translate(0px, 0px) rotate(0deg)" }
+        ],
+        { duration: 250, easing: "ease-in-out", fill: "forwards" }
+      );
+      await wait(250);
+
+      flying.remove();
+      sourceEl.style.visibility = "";
+
+      animating = false;
+      render();
+    }
+
+    async function onTubeClick(index){
+      if(animating || checkWin()) return;
+
+      if(selectedTube === null){
+        if(!tubes[index].length) return;
+        selectedTube = index;
+        render();
+        return;
+      }
+
+      if(selectedTube === index){
+        selectedTube = null;
+        render();
+        return;
+      }
+
+      if(!canPour(selectedTube, index)){
+        selectedTube = tubes[index].length ? index : null;
+        render();
+        return;
+      }
+
+      saveHistory();
+      const from = selectedTube;
+      selectedTube = null;
+      render();
+      await animatePour(from, index);
+    }
+
+    function restartLevel(){
+      if(animating) return;
+      tubes = clone(initialTubes);
+      history = [];
+      selectedTube = null;
+      moves = 0;
+      render();
+    }
+
+    function newLevel(){
+      if(animating) return;
+      initialTubes = generateLevelData(level);
+      tubes = clone(initialTubes);
+      history = [];
+      selectedTube = null;
+      moves = 0;
+      render();
+    }
+
+    function nextLevel(){
+      if(animating) return;
+      level++;
+      newLevel();
+    }
+
+    function resetToLevel1(){
+      if(animating) return;
+      level = 1;
+      history = [];
+      selectedTube = null;
+      moves = 0;
+      initialTubes = generateLevelData(1);
+      tubes = clone(initialTubes);
+      render();
+    }
+
+    function undoMove(){
+      if(animating || history.length === 0) return;
+      const prev = history.pop();
+      tubes = clone(prev.tubes);
+      moves = prev.moves;
+      selectedTube = null;
+      render();
+    }
+
+    restartBtn.addEventListener("click", restartLevel);
+    nextBtn.addEventListener("click", () => {
+      if(checkWin()) nextLevel();
+      else {
+        level++;
+        newLevel();
+      }
+    });
+    undoBtn.addEventListener("click", undoMove);
+    resetLv1Btn.addEventListener("click", resetToLevel1);
+
+    newLevel();
+  </script>
+</body>
+</html>
